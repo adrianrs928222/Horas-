@@ -1,9 +1,26 @@
+const diasSemana = [
+  "Domingo",
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado"
+];
+
 function calcularHoras(e, s) {
 
   let [h1,m1] = e.split(":").map(Number);
   let [h2,m2] = s.split(":").map(Number);
 
   return (h2 + m2/60) - (h1 + m1/60);
+}
+
+function obtenerDia(fecha) {
+
+  const d = new Date(fecha);
+
+  return diasSemana[d.getDay()];
 }
 
 async function cargar() {
@@ -16,17 +33,25 @@ async function cargar() {
 
   tabla.innerHTML = "";
 
+  let totalSemana = 0;
+
   datos.forEach(d => {
+
+    totalSemana += d.total;
 
     tabla.innerHTML += `
       <tr>
+        <td>${obtenerDia(d.fecha)}</td>
         <td>${d.fecha}</td>
-        <td>${d.horas.toFixed(2)}</td>
+        <td>${d.horas.toFixed(2)}h</td>
         <td>${d.total.toFixed(2)}€</td>
       </tr>
     `;
 
   });
+
+  document.getElementById("resumen").innerText =
+    `💰 Total semanal: ${totalSemana.toFixed(2)}€`;
 
 }
 
@@ -41,7 +66,7 @@ async function guardar() {
   let precio = parseFloat(document.getElementById("precio").value);
 
   if(!fecha || !entrada || !salida || !precio) {
-    alert("Rellena todo");
+    alert("Rellena todos los campos");
     return;
   }
 
@@ -68,29 +93,6 @@ async function guardar() {
   });
 
   cargar();
-}
-
-function verMes() {
-
-  fetch("/api/horas")
-    .then(res => res.json())
-    .then(datos => {
-
-      let mes = document.getElementById("mes").value;
-
-      let filtrados = datos.filter(d => d.fecha.startsWith(mes));
-
-      let total = 0;
-
-      filtrados.forEach(d => {
-        total += d.total;
-      });
-
-      document.getElementById("resumen").innerText =
-        `💰 ${total.toFixed(2)}€ ganados en ${filtrados.length} días`;
-
-    });
-
 }
 
 cargar();

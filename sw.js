@@ -1,5 +1,5 @@
 self.addEventListener("install", () => {
-  console.log("SW instalado");
+console.log("PWA instalada");
 });
 
 self.addEventListener("fetch", () => {});

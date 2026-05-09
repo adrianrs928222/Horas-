@@ -1,56 +1,199 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Control Horas</title>
 
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#222">
+<title>Registro de Horas</title>
 
-<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+<link rel="manifest" href="manifest.json">
+
+<meta name="theme-color" content="#ece9f3">
 
 <style>
-body{font-family:Arial;background:#f4f4f4;padding:20px}
-.box{max-width:700px;margin:auto;background:white;padding:20px;border-radius:10px}
-input,button{width:100%;padding:10px;margin-top:10px}
-table{width:100%;margin-top:20px;border-collapse:collapse}
-td,th{border:1px solid #ddd;padding:8px;text-align:center}
-th{background:#222;color:white}
-.semana{background:#eee;font-weight:bold}
+
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
+font-family:Arial;
+}
+
+body{
+background:#ece9f3;
+padding-bottom:100px;
+}
+
+header{
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:20px;
+font-size:22px;
+font-weight:bold;
+position:sticky;
+top:0;
+background:#ece9f3;
+z-index:100;
+}
+
+.menu{
+font-size:28px;
+}
+
+.addBtn{
+position:fixed;
+right:20px;
+bottom:20px;
+width:70px;
+height:70px;
+border:none;
+border-radius:50%;
+background:#76e27d;
+color:white;
+font-size:40px;
+box-shadow:0 5px 20px rgba(0,0,0,.2);
+cursor:pointer;
+}
+
+.card{
+background:white;
+margin:15px;
+border-radius:20px;
+overflow:hidden;
+box-shadow:0 3px 10px rgba(0,0,0,.08);
+}
+
+.cardHeader{
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:20px;
+background:#f4f1fa;
+font-size:20px;
+cursor:pointer;
+}
+
+.cardContent{
+display:none;
+padding:15px;
+}
+
+.item{
+padding:15px 0;
+border-bottom:1px solid #eee;
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.total{
+padding:20px 0 5px;
+font-size:18px;
+font-weight:bold;
+text-align:right;
+}
+
+.delete{
+margin-top:10px;
+background:#ff5b5b;
+color:white;
+border:none;
+padding:10px;
+border-radius:10px;
+cursor:pointer;
+}
+
+.modal{
+position:fixed;
+inset:0;
+background:rgba(0,0,0,.5);
+display:none;
+justify-content:center;
+align-items:center;
+padding:20px;
+z-index:999;
+}
+
+.modalBox{
+background:white;
+width:100%;
+max-width:500px;
+padding:25px;
+border-radius:25px;
+}
+
+.modalBox h2{
+margin-bottom:15px;
+}
+
+input{
+width:100%;
+padding:15px;
+margin-top:12px;
+border-radius:12px;
+border:1px solid #ccc;
+font-size:16px;
+}
+
+.save{
+margin-top:15px;
+width:100%;
+padding:15px;
+border:none;
+border-radius:12px;
+background:#6d7cff;
+color:white;
+font-size:18px;
+cursor:pointer;
+}
+
+#resumen{
+padding:0 20px;
+font-size:20px;
+font-weight:bold;
+}
+
 </style>
+
 </head>
 
 <body>
 
-<div class="box" id="contenido">
+<header>
+<div class="menu">☰</div>
+<div>Registro de horas</div>
+<div>⚙️</div>
+</header>
 
-<h2>📊 Control de Horas</h2>
+<div id="resumen"></div>
+
+<div id="lista"></div>
+
+<button class="addBtn" onclick="abrir()">+</button>
+
+<div class="modal" id="modal">
+
+<div class="modalBox">
+
+<h2>Nueva jornada</h2>
+
+<input type="text" id="descripcion" placeholder="Descripción">
 
 <input type="date" id="fecha">
-<input type="time" id="entrada">
-<input type="time" id="salida">
+
+<input type="time" id="inicio">
+
+<input type="time" id="fin">
+
 <input type="number" id="precio" placeholder="€/hora">
 
-<button onclick="guardar()">Guardar</button>
+<button class="save" onclick="guardar()">
+Guardar
+</button>
 
-<button onclick="exportar()">📸 Exportar</button>
-
-<div id="resumen" style="margin-top:10px;font-weight:bold"></div>
-
-<table>
-<thead>
-<tr>
-<th>Día</th>
-<th>Fecha</th>
-<th>Horas</th>
-<th>Total</th>
-<th>X</th>
-</tr>
-</thead>
-<tbody id="tabla"></tbody>
-</table>
+</div>
 
 </div>
 
@@ -58,114 +201,196 @@ th{background:#222;color:white}
 
 let datos = JSON.parse(localStorage.getItem("horas")) || [];
 
-const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+const dias = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
 
-function calcularHoras(e,s){
-let [h1,m1]=e.split(":").map(Number);
-let [h2,m2]=s.split(":").map(Number);
-return (h2+m2/60)-(h1+m1/60);
+const meses = [
+"ene","feb","mar","abr","may","jun",
+"jul","ago","sep","oct","nov","dic"
+];
+
+function abrir(){
+document.getElementById("modal").style.display="flex";
 }
 
-function getMonday(dateStr){
-let d=new Date(dateStr);
-let day=d.getDay();
-let diff=d.getDate()-day+(day===0?-6:1);
-d.setDate(diff);
-return d.toISOString().split("T")[0];
+window.onclick = e=>{
+if(e.target.id==="modal"){
+document.getElementById("modal").style.display="none";
+}
+}
+
+function calcularHoras(i,f){
+
+let [h1,m1]=i.split(":").map(Number);
+let [h2,m2]=f.split(":").map(Number);
+
+return (h2+m2/60)-(h1+m1/60);
 }
 
 function guardar(){
 
-let f=document.getElementById("fecha").value;
-let e=document.getElementById("entrada").value;
-let s=document.getElementById("salida").value;
-let p=parseFloat(document.getElementById("precio").value);
+let descripcion=document.getElementById("descripcion").value;
 
-if(!f||!e||!s||!p){alert("Rellena todo");return;}
+let fecha=document.getElementById("fecha").value;
 
-let h=calcularHoras(e,s);
-let t=h*p;
+let inicio=document.getElementById("inicio").value;
 
-datos.push({fecha:f,entrada:e,salida:s,horas:h,total:t});
+let fin=document.getElementById("fin").value;
+
+let precio=parseFloat(document.getElementById("precio").value);
+
+if(!descripcion || !fecha || !inicio || !fin || !precio){
+
+alert("Rellena todos los campos");
+
+return;
+}
+
+let horas=calcularHoras(inicio,fin);
+
+let total=horas*precio;
+
+datos.push({
+descripcion,
+fecha,
+inicio,
+fin,
+horas,
+precio,
+total
+});
 
 localStorage.setItem("horas",JSON.stringify(datos));
+
+document.getElementById("modal").style.display="none";
 
 render();
 }
 
 function eliminar(i){
+
 datos.splice(i,1);
+
 localStorage.setItem("horas",JSON.stringify(datos));
+
 render();
+}
+
+function agrupar(){
+
+let grupos={};
+
+datos.forEach((d,index)=>{
+
+if(!grupos[d.fecha]){
+grupos[d.fecha]=[];
+}
+
+grupos[d.fecha].push({...d,index});
+
+});
+
+return grupos;
 }
 
 function render(){
 
-let tabla=document.getElementById("tabla");
-tabla.innerHTML="";
+let lista=document.getElementById("lista");
 
-let semanas={};
-let totalGlobal=0;
+lista.innerHTML="";
 
-datos.forEach(d=>{
+let grupos=agrupar();
 
-let sem=getMonday(d.fecha);
+let totalGeneral=0;
 
-if(!semanas[sem]) semanas[sem]={total:0,items:[]};
+Object.keys(grupos).reverse().forEach(fecha=>{
 
-semanas[sem].total+=d.total;
-semanas[sem].items.push(d);
+let trabajos=grupos[fecha];
 
-});
+let f=new Date(fecha);
 
-Object.keys(semanas).forEach(s=>{
+let totalDia=0;
 
-let sem=semanas[s];
-totalGlobal+=sem.total;
+trabajos.forEach(t=>{
 
-tabla.innerHTML+=`
-<tr class="semana"><td colspan="5">📅 Semana ${s}</td></tr>
-`;
-
-sem.items.forEach((d,i)=>{
-
-tabla.innerHTML+=`
-<tr>
-<td>${dias[new Date(d.fecha).getDay()]}</td>
-<td>${d.fecha}</td>
-<td>${d.horas.toFixed(2)}h</td>
-<td>${d.total.toFixed(2)}€</td>
-<td onclick="eliminar(${datos.indexOf(d)})">❌</td>
-</tr>
-`;
+totalDia+=t.total;
+totalGeneral+=t.total;
 
 });
 
-tabla.innerHTML+=`
-<tr style="font-weight:bold">
-<td colspan="5">💰 Semana: ${sem.total.toFixed(2)}€</td>
-</tr>
+let card=document.createElement("div");
+
+card.className="card";
+
+card.innerHTML=`
+
+<div class="cardHeader" onclick="toggle(this)">
+
+<div>
+${dias[f.getDay()]}, ${f.getDate()} ${meses[f.getMonth()]}
+</div>
+
+<div>
+${trabajos.reduce((a,b)=>a+b.horas,0).toFixed(1)} h
+</div>
+
+</div>
+
+<div class="cardContent">
+
+${trabajos.map(t=>`
+
+<div class="item">
+
+<div>
+<b>${t.descripcion}</b><br>
+${t.inicio} - ${t.fin}
+</div>
+
+<div>
+${t.total.toFixed(2)}€
+</div>
+
+</div>
+
+<button class="delete" onclick="eliminar(${t.index})">
+Eliminar
+</button>
+
+`).join("")}
+
+<div class="total">
+💰 ${totalDia.toFixed(2)}€
+</div>
+
+</div>
+
 `;
+
+lista.appendChild(card);
 
 });
 
-document.getElementById("resumen").innerText=
-`💰 Total: ${totalGlobal.toFixed(2)}€`;
+document.getElementById("resumen").innerHTML=
+`💰 Total ganado: ${totalGeneral.toFixed(2)}€`;
+
 }
 
-function exportar(){
-html2canvas(document.getElementById("contenido")).then(c=>{
-let a=document.createElement("a");
-a.download="horas.png";
-a.href=c.toDataURL();
-a.click();
-});
+function toggle(el){
+
+let c=el.nextElementSibling;
+
+c.style.display=
+c.style.display==="block"
+? "none"
+: "block";
 }
 
 render();
 
-if('serviceWorker' in navigator){
-navigator.serviceWorker.register('sw.js');
+if("serviceWorker" in navigator){
+
+navigator.serviceWorker.register("sw.js");
+
 }
 
 </script>

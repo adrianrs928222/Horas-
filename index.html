@@ -1,98 +1,174 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Horas Trabajadas</title>
+<meta charset="UTF-8">
+<title>Control Horas</title>
 
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <style>
-    body {
-      font-family: Arial;
-      background: #f4f4f4;
-      padding: 20px;
-    }
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#222">
 
-    .box {
-      max-width: 700px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-    }
+<script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 
-    input, button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      box-sizing: border-box;
-    }
-
-    table {
-      width: 100%;
-      margin-top: 20px;
-      border-collapse: collapse;
-    }
-
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
-    }
-
-    th {
-      background: #222;
-      color: white;
-    }
-
-    #resumen {
-      margin-top: 15px;
-      font-size: 20px;
-      font-weight: bold;
-    }
-  </style>
+<style>
+body{font-family:Arial;background:#f4f4f4;padding:20px}
+.box{max-width:700px;margin:auto;background:white;padding:20px;border-radius:10px}
+input,button{width:100%;padding:10px;margin-top:10px}
+table{width:100%;margin-top:20px;border-collapse:collapse}
+td,th{border:1px solid #ddd;padding:8px;text-align:center}
+th{background:#222;color:white}
+.semana{background:#eee;font-weight:bold}
+</style>
 </head>
 
 <body>
 
 <div class="box" id="contenido">
 
-  <h2>📊 Control de Horas</h2>
+<h2>📊 Control de Horas</h2>
 
-  <input type="date" id="fecha">
+<input type="date" id="fecha">
+<input type="time" id="entrada">
+<input type="time" id="salida">
+<input type="number" id="precio" placeholder="€/hora">
 
-  <input type="time" id="entrada">
+<button onclick="guardar()">Guardar</button>
 
-  <input type="time" id="salida">
+<button onclick="exportar()">📸 Exportar</button>
 
-  <input type="number" id="precio" placeholder="Precio por hora (€)">
+<div id="resumen" style="margin-top:10px;font-weight:bold"></div>
 
-  <button onclick="guardar()">Guardar</button>
-
-  <hr>
-
-  <input type="month" id="mes">
-
-  <button onclick="verMes()">Calcular mes</button>
-
-  <div id="resumen"></div>
-
-  <table>
-    <thead>
-  <tr>
-    <th>Día</th>
-    <th>Fecha</th>
-    <th>Horas</th>
-    <th>Total</th>
-  </tr>
+<table>
+<thead>
+<tr>
+<th>Día</th>
+<th>Fecha</th>
+<th>Horas</th>
+<th>Total</th>
+<th>X</th>
+</tr>
 </thead>
-
-    <tbody id="tabla"></tbody>
-  </table>
+<tbody id="tabla"></tbody>
+</table>
 
 </div>
 
-<script src="app.js"></script>
+<script>
+
+let datos = JSON.parse(localStorage.getItem("horas")) || [];
+
+const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+
+function calcularHoras(e,s){
+let [h1,m1]=e.split(":").map(Number);
+let [h2,m2]=s.split(":").map(Number);
+return (h2+m2/60)-(h1+m1/60);
+}
+
+function getMonday(dateStr){
+let d=new Date(dateStr);
+let day=d.getDay();
+let diff=d.getDate()-day+(day===0?-6:1);
+d.setDate(diff);
+return d.toISOString().split("T")[0];
+}
+
+function guardar(){
+
+let f=document.getElementById("fecha").value;
+let e=document.getElementById("entrada").value;
+let s=document.getElementById("salida").value;
+let p=parseFloat(document.getElementById("precio").value);
+
+if(!f||!e||!s||!p){alert("Rellena todo");return;}
+
+let h=calcularHoras(e,s);
+let t=h*p;
+
+datos.push({fecha:f,entrada:e,salida:s,horas:h,total:t});
+
+localStorage.setItem("horas",JSON.stringify(datos));
+
+render();
+}
+
+function eliminar(i){
+datos.splice(i,1);
+localStorage.setItem("horas",JSON.stringify(datos));
+render();
+}
+
+function render(){
+
+let tabla=document.getElementById("tabla");
+tabla.innerHTML="";
+
+let semanas={};
+let totalGlobal=0;
+
+datos.forEach(d=>{
+
+let sem=getMonday(d.fecha);
+
+if(!semanas[sem]) semanas[sem]={total:0,items:[]};
+
+semanas[sem].total+=d.total;
+semanas[sem].items.push(d);
+
+});
+
+Object.keys(semanas).forEach(s=>{
+
+let sem=semanas[s];
+totalGlobal+=sem.total;
+
+tabla.innerHTML+=`
+<tr class="semana"><td colspan="5">📅 Semana ${s}</td></tr>
+`;
+
+sem.items.forEach((d,i)=>{
+
+tabla.innerHTML+=`
+<tr>
+<td>${dias[new Date(d.fecha).getDay()]}</td>
+<td>${d.fecha}</td>
+<td>${d.horas.toFixed(2)}h</td>
+<td>${d.total.toFixed(2)}€</td>
+<td onclick="eliminar(${datos.indexOf(d)})">❌</td>
+</tr>
+`;
+
+});
+
+tabla.innerHTML+=`
+<tr style="font-weight:bold">
+<td colspan="5">💰 Semana: ${sem.total.toFixed(2)}€</td>
+</tr>
+`;
+
+});
+
+document.getElementById("resumen").innerText=
+`💰 Total: ${totalGlobal.toFixed(2)}€`;
+}
+
+function exportar(){
+html2canvas(document.getElementById("contenido")).then(c=>{
+let a=document.createElement("a");
+a.download="horas.png";
+a.href=c.toDataURL();
+a.click();
+});
+}
+
+render();
+
+if('serviceWorker' in navigator){
+navigator.serviceWorker.register('sw.js');
+}
+
+</script>
 
 </body>
 </html>
